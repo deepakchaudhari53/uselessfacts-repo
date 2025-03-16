@@ -1,68 +1,49 @@
-# uselessfacts-repo
+# Useless Facts Backend
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+A Quarkus-based service to fetch and cache random facts.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Prerequisites
+- Java 17+
+- Maven 3.9.3
 
-## Running the application in dev mode
+## Running
+```bash
+mvn quarkus:dev
 
-You can run your application in dev mode that enables live coding using:
+#### Swagger UI - http://localhost:8080/q/swagger-ui/
 
-```shell script
-./mvnw quarkus:dev
-```
+Use the following header to access admin endpoints:
+```bash
+curl -H "X-API-Key: secret_admin_key" http://localhost:8080/facts/admin/statistics
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+### Explanation
 
-## Packaging and running the application
+1. **Data Handling:**
+   - `ApiFactResponse` mirrors the structure of the external API's response.
+   - `CachedFact` extends this with a `shortenedUrl` (UUID) and `accessCount`.
 
-The application can be packaged using:
+2. **Caching:**
+   - `FactService` uses a `ConcurrentHashMap` for thread-safe in-memory storage.
+   - Atomic operations (via `computeIfPresent`) ensure safe access count increments.
 
-```shell script
-./mvnw package
-```
+3. **Endpoints:**
+   - **POST /facts:** Fetches from external API, generates a UUID, and stores the fact.
+   - **GET /facts/{id}:** Retrieves and increments access count atomically.
+   - **GET /facts:** Returns all facts without modifying counts.
+   - **GET /admin/statistics:** Provides access statistics for monitoring.
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+4. **Error Handling:**
+   - Gracefully handles external API failures with appropriate HTTP status codes.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+5. **Testing:**
+   - Mocked REST client in tests ensures reliability and speed.
+   - Comprehensive tests cover success and failure scenarios.
 
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/uselessfacts-repo-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
-
-test
+## Endpoints
+| Method | Endpoint                            | Description                                                                           |
+|--------|-------------------------------------|---------------------------------------------------------------------------------------|
+| `POST`  | `/v1/facts`                        | Get a random fact from the Useless Facts API, stores it, and returns a shortened URL. |
+| `GET`  | `/v1/facts/{shortenedUrl}`          | Returns the cached fact and increments the access count.                              |
+| `GET`  | `/v1/facts/getAllFacts`             | Returns all cached facts and does not increment the access count.                     |
+| `GET`  | `/v1/facts/{shortenedUrl}/redirect` | Redirects to the original fact and increments the access count.                       |
+| `GET`  | `/v1/facts/admin/statistics`        | Provides access statistics for all shortened URLs.                                    |
